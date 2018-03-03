@@ -79,7 +79,6 @@ FBDrawChar:
 ; r9 = String's Y-position
 ; ===========================================================================
 FBDrawString:
-		movw	rr2,#Test_String
 		
 DrwStr_Chr:
 		mov	r11,#StrCharY
@@ -130,10 +129,6 @@ DrwStr_NxtChr:
 		
 DrwStr_END:		
 		ret
-
-Test_String:	
-		defm	'HELLO FROM STONE'
-		db	0FFh		; end of string
 ; ===========================================================================	
 		end
 ; ===========================================================================	
