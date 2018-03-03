@@ -2,13 +2,13 @@
 		type	8521
 		program
 ;============================================================================		
-SFGHQ_Bank  equ     021h
+SFGHQ_Bank	equ     39
 
-SFGHQ_Update:		
+SFGHQ_Update:
 		call	Wait10Seconds
 		mov 	nextGState, #1
-		call 	Game_ChangeState
-		ret
+		jmp 	Game_ChangeState
+
 SFGHQ_Draw:
 		mov		r8,#0
 		mov		r9,#0

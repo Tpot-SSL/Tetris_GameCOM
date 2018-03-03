@@ -3,8 +3,8 @@
 		program
 ;============================================================================	
 
-Tetris_Bank1  equ     024h
-Tetris_Bank2  equ     021h
+Tetris_Bank1  equ     36
+Tetris_Bank2  equ     39
 
 Tetris_DrawField:
 		mov		r8,#123
@@ -27,12 +27,25 @@ Tetris_DrawField:
 		mov		r15,#0				; Write mode
 		call	FBDrawGraphicF
 		ret
+
+;============================================================================
+; Main game update loop
+;============================================================================		
 Tetris_Update:
+		call	WaitForVInt
+		
+		mov	r8,#0
+		mov	r9,#0		
+;		mov	r10,#2	
+		call	FBDrawString
 		jmp Tetris_Update
+		
+;============================================================================
+; Screen fade drawing routine
+;============================================================================
 Tetris_Draw:
-		call	FBFillColor
+;		call	FBFillColor
 		call 	Tetris_DrawField
-		call	FBDrawChar
 		ret
 ;============================================================================
 		end

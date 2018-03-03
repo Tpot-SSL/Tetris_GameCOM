@@ -18,7 +18,7 @@
 		dw      EntryPoint
 		db      00000011b           ;3
 		dm      'TigerDMGC'
-		db      24h	         		;icon located bank no.
+		db      36	         		;icon located bank no.
 		db      0                  	;x_coord.
 		db      160                 ;y_coord.
 		dm      'TetrisTGM'			; Game Title
@@ -45,18 +45,18 @@ GameInit:
 ; ---------------------------------------------------------------------------		
 Game_Reset:
 Game_Exe:
-		mov		fadeStep,#255
-		mov 	gameState,#0
-Game_State:
+		mov	fadeStep,#255		; initialize the fade step to be fully black
+		mov 	gameState,#0		; set the game state to the SFGHQ screen
+
 		call    Game_FadeIn
-		call	Game_Update
+
 Game_Update:
-		cmp 	gameState, #0
-		jmp 	eq, SFGHQ_Update
-		cmp 	gameState, #1
-		jmp 	eq, Tetris_Update
-		
-		jmp		Game_Update
+		cmp 	gameState, #0		; is the current game state for the SFGHQ splash screen?
+		jmp 	eq, SFGHQ_Update	; if so, branch
+		cmp 	gameState, #1		; is the current game state for the Tetris game?
+		jmp 	eq, Tetris_Update	; if so, branch
+		jmp	Game_Update
+
 Game_Draw:
 		cmp 	gameState, #0
 		jmp 	eq, SFGHQ_Draw
@@ -65,32 +65,32 @@ Game_Draw:
 		ret
 Game_FadeIn:
 		call	WaitForVInt	
-		mov		r0,fadeStep
-		dec		r0
-		mov		fadeStep,r0
+		mov	r0,fadeStep
+		dec	r0
+		mov	fadeStep,r0
 
 		call	Game_Draw	
 		
-		cmp		r0,#111
-		jmp		ne,Game_FadeIn
+		cmp	r0,#111
+		jmp	ne,Game_FadeIn
 		
 		ret
 Game_ChangeState:
 		call    Game_FadeOut
-		mov		gameState,nextGState
+		mov	gameState,nextGState
 		call    Game_FadeIn
-		jmp		Game_Update
+		jmp	Game_Update
 		
 Game_FadeOut:
 		call	WaitForVInt	
-		mov		r0,fadeStep
-		inc		r0
-		mov		fadeStep,r0
+		mov	r0,fadeStep
+		inc	r0
+		mov	fadeStep,r0
 		
 		call	Game_Draw	
 		
-		cmp		r0,#255
-		jmp		ne,Game_FadeOut
+		cmp	r0,#255
+		br	ne,Game_FadeOut
 		ret
 
 ; ===========================================================================	

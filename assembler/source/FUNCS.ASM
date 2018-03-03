@@ -55,19 +55,93 @@ WaitForVInt_Wait:
 		ret							; return
 ; ===========================================================================	
 StrCharY        equ     251
-StrCharBank     equ     21h
+StrCharBank     equ     39
 StrCharWid      equ     5
 
 FBDrawChar:
-		mov		r10,#5			; for testing, draw the number '1'
-		mov		r11,#StrCharY
-		mov		r12,#StrCharWid
-		mov		r13,#StrCharWid
-		mov		r14,#StrCharBank
-		mov		r15,#0
+		mov	r11,r10
+		mov	r10,#0
+		mult	rr10,#StrCharWid
+		mov	r10,r11
+		mov	r11,#StrCharY
+		mov	r12,#StrCharWid
+		mov	r13,#StrCharWid
+		mov	r14,#StrCharBank
+		mov	r15,#049h
 		call	FBDrawGraphic		
 		
 		ret
+; ===========================================================================	
+; Subroutine to write a string on screen
+; Input:
+; rr0 = String's address
+; r8 = String's X-position
+; r9 = String's Y-position
+; ===========================================================================
+FBDrawString:
+		movw	rr2,#Test_String
+		
+DrwStr_Chr:
+		mov	r0,(rr2)+
+		cmp	r0,#0FFh	; is the character a terminator?
+		br	eq,DrwStr_END	; if so, branch
+		cmp	r0,#020h	; is the character a space?
+		br	eq,DrwStr_Spc	; if so, branch
+		cmp	r0,#041h	; is the character from the alphabet?
+		br	uge,DrwStr_Alph	; if so, branch
+		cmp	r0,#030h	; is the character numeric?
+		br	uge,DrwStr_Num	; if so, branch
+		jmp	DrwStr_END	; otherwise, panic and leave
+		
+DrwStr_Spc:
+		mov	r0,#44
+		br	DrwStr_Do
+				
+DrwStr_Num:
+		cmp	r0,#039h	; is the character numeric? (checking for 9)
+		br	ugt,DrwStr_END	; if not, panic and leave
+		sub	r0,#030h
+		br	DrwStr_Do
+				
+DrwStr_Alph:
+		cmp	r0,#05Ah	; is the character from the alphabet? (checking for Z)
+		br	ugt,DrwStr_END	; if not, panic and leave
+		
+		
+		sub	r0,#037h
+		br	DrwStr_Do
+
+DrwStr_Do:		
+		mov	r10,r0
+		push	r8
+		push	r9
+		call	FBDrawChar	; otherwise, draw the character
+		pop	r9
+		pop	r8
+		add	r8,#6		; increase the X-position for the next character
+		br	DrwStr_Chr
+		
+DrwStr_END:		
+		ret
+
+Test_String:		
+		db	'H'
+		db	'E'
+		db	'L'
+		db	'L'
+		db	'O'
+		db	' '
+		db	'F'
+		db	'R'
+		db	'O'
+		db	'M'
+		db	' '
+		db	'S'
+		db	'T'
+		db	'O'
+		db	'N'
+		db	'E'
+		db	0FFh		; end of string
 ; ===========================================================================	
 		end
 ; ===========================================================================	
