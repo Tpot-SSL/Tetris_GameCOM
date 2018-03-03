@@ -4,3 +4,9 @@
 *.exe
 *.lnk
 *.err
+
+*.HEX
+*.LIS
+*.OBJ
+*.PRO
+*.SYM

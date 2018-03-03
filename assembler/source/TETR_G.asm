@@ -34,10 +34,27 @@ Tetris_DrawField:
 Tetris_Update:
 		call	WaitForVInt
 		
-		mov	r8,#0
-		mov	r9,#0		
+		mov	r8,#50
+		mov	r9,#10		
 ;		mov	r10,#2	
 		call	FBDrawString
+
+;		mov	r10,#0
+;		mov	r11,#224
+;		mov	r12,#6
+;		mov	r13,#6
+;		mov	r14,#39
+;		mov	r15,#01h
+;		call	FBDrawGraphic
+		
+;		mov	r10,#0
+;		mov	r11,#236
+;		mov	r12,#6
+;		mov	r13,#6
+;		mov	r14,#39
+;		mov	r15,#09h
+;		call	FBDrawGraphic
+
 		jmp Tetris_Update
 		
 ;============================================================================

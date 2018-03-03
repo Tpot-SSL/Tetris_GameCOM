@@ -54,20 +54,20 @@ WaitForVInt_Wait:
 		popw	rr2					; restore rr2 from the stack
 		ret							; return
 ; ===========================================================================	
-StrCharY        equ     251
+StrCharY        equ     224
 StrCharBank     equ     39
-StrCharWid      equ     5
+StrCharWid      equ     6
 
 FBDrawChar:
+		push	r11
 		mov	r11,r10
 		mov	r10,#0
 		mult	rr10,#StrCharWid
 		mov	r10,r11
-		mov	r11,#StrCharY
+		pop	r11
 		mov	r12,#StrCharWid
 		mov	r13,#StrCharWid
 		mov	r14,#StrCharBank
-		mov	r15,#049h
 		call	FBDrawGraphic		
 		
 		ret
@@ -82,6 +82,7 @@ FBDrawString:
 		movw	rr2,#Test_String
 		
 DrwStr_Chr:
+		mov	r11,#StrCharY
 		mov	r0,(rr2)+
 		cmp	r0,#0FFh	; is the character a terminator?
 		br	eq,DrwStr_END	; if so, branch
@@ -94,7 +95,7 @@ DrwStr_Chr:
 		jmp	DrwStr_END	; otherwise, panic and leave
 		
 DrwStr_Spc:
-		mov	r0,#44
+		mov	r0,#36
 		br	DrwStr_Do
 				
 DrwStr_Num:
@@ -113,34 +114,25 @@ DrwStr_Alph:
 
 DrwStr_Do:		
 		mov	r10,r0
-		push	r8
-		push	r9
+		push	r10
+		mov	r15,#01h
 		call	FBDrawChar	; otherwise, draw the character
-		pop	r9
-		pop	r8
+		pop	r10
+		cmp	r0,#36		; is the character a space?
+		br	eq,DrwStr_NxtChr ; if so, dont do the extra XORing
+		add	r11,#12
+		mov	r15,#09h
+		call	FBDrawChar
+
+DrwStr_NxtChr:
 		add	r8,#6		; increase the X-position for the next character
 		br	DrwStr_Chr
 		
 DrwStr_END:		
 		ret
 
-Test_String:		
-		db	'H'
-		db	'E'
-		db	'L'
-		db	'L'
-		db	'O'
-		db	' '
-		db	'F'
-		db	'R'
-		db	'O'
-		db	'M'
-		db	' '
-		db	'S'
-		db	'T'
-		db	'O'
-		db	'N'
-		db	'E'
+Test_String:	
+		defm	'HELLO FROM STONE'
 		db	0FFh		; end of string
 ; ===========================================================================	
 		end
