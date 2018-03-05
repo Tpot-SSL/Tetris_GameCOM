@@ -32,7 +32,7 @@ sp_control      equ     0a8h
     global  		Active_page_B
     global  		Active_page_A
 	global			FBDrawGraphic2
-	global			Swap_page
+	global			FBSwapPage
 	
 	global			SysKeyHandler
 	global			quit_box
@@ -154,7 +154,14 @@ FBDrawGraphic2:
 	mov		r7,#56h
 	jmp		System_Call
 
-Swap_page:
+FBSwapPage:
+	push	r0
+	mov	r0,currPage
+	add	r0,#1
+	and	r0,#1
+	mov	currPage,r0
+	pop	r0
+
 	pushw	rr6
 	mov		r7,#57h
 	jmp		System_Call

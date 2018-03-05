@@ -8,7 +8,13 @@ playerInput	defs	1	; the player's input for the frame
 fadeStep	defs	1	; fading step
 gameState	defs	1	; gameState
 nextGState	defs	1	; next gameState
+currPage	defs	1	; current rendering page
 
+tetrisPieces	defs	2	; the 4 generated tetris pieces (01110222 03330444)
+pieceRNG	defs	1	; randomly generated number for tetris pieces
+currPieceX	defs	1	; current tetris piece X-coordinate
+currPieceY	defs	1	; current tetris piece Y-coordinate
+	
 ; Check to make sure that the space within zero page RAM hasn't been exceeded
 chk_FF:
             if      chk_FF .gt. 0FFh

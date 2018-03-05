@@ -59,17 +59,30 @@ StrCharBank     equ     39
 StrCharWid      equ     6
 
 FBDrawChar:
-		push	r11
 		mov	r11,r10
 		mov	r10,#0
 		mult	rr10,#StrCharWid
 		mov	r10,r11
-		pop	r11
+		mov	r11,#StrCharY
 		mov	r12,#StrCharWid
 		mov	r13,#StrCharWid
 		mov	r14,#StrCharBank
+		mov	r15,#01h
+		cmp	currPage,#1
+		br	eq,FBDrawChar_1
+		add	r15,#02h
+FBDrawChar_1:
 		call	FBDrawGraphic		
-		
+		cmp	r0,#36		; is the character a space?
+		br	eq,FBDrawChar_END ; if so, dont do the extra XORing
+		add	r11,#12
+		mov	r15,#09h
+		cmp	currPage,#1
+		br	eq,FBDrawChar_2
+		add	r15,#02h
+FBDrawChar_2:
+		call	FBDrawGraphic			
+FBDrawChar_END:
 		ret
 ; ===========================================================================	
 ; Subroutine to write a string on screen
@@ -81,7 +94,6 @@ FBDrawChar:
 FBDrawString:
 		
 DrwStr_Chr:
-		mov	r11,#StrCharY
 		mov	r0,(rr2)+
 		cmp	r0,#0FFh	; is the character a terminator?
 		br	eq,DrwStr_END	; if so, branch
@@ -113,15 +125,7 @@ DrwStr_Alph:
 
 DrwStr_Do:		
 		mov	r10,r0
-		push	r10
-		mov	r15,#01h
 		call	FBDrawChar	; otherwise, draw the character
-		pop	r10
-		cmp	r0,#36		; is the character a space?
-		br	eq,DrwStr_NxtChr ; if so, dont do the extra XORing
-		add	r11,#12
-		mov	r15,#09h
-		call	FBDrawChar
 
 DrwStr_NxtChr:
 		add	r8,#6		; increase the X-position for the next character
@@ -129,6 +133,25 @@ DrwStr_NxtChr:
 		
 DrwStr_END:		
 		ret
+; ===========================================================================	
+; Subroutine to generate a random number
+; ===========================================================================
+RNGenerator:
+		push	r0			; store r0 onto the stack
+		mov	r0,pieceRNG		; grab the previous RNG seed
+		add	r0,prevVtick		; add the previous vertical blank tick to the seed
+		push	r1			; store r1 onto the stack
+		mov	r1,tetrisPieces		; copy the high byte of the current tetris pieces to r1
+		rl	r1			; roll the current piece around to the first 3 bits
+		rl	r1
+		rl	r1
+		and	r1,#3			; mask out the current piece
+		add	r0,r1			; add this piece to the seed
+		pop	r1			; restore r1 from the stack
+		sub	r0,#1			; decrement the seed
+		mov	pieceRNG,r0		; store the newly generated seed
+		pop	r0			; restore r0 from the stack
+		ret				; return
 ; ===========================================================================	
 		end
 ; ===========================================================================	
