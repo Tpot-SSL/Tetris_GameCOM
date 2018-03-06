@@ -28,8 +28,12 @@ onesecond:
 ; Subroutine to read the player's input
 ; ===========================================================================	
 ReadInput:
-;		call	SCAN_KEY		; use the system call to read the current inputs
+		call	IOInputScan		; use the system call to read the current inputs
 		mov	playerInput,r0		; store the input to RAM
+		call	IOInputScan
+		mov	r1,playerInput
+		cmp	r0,r1
+		br	eq,ReadInput
 		ret
 ; ===========================================================================
 ; Subroutine to wait for a vertical interrupt
@@ -153,5 +157,86 @@ RNGenerator:
 		pop	r0			; restore r0 from the stack
 		ret				; return
 ; ===========================================================================	
+; Subroutine to render a tetris piece
+; Usage:
+; r0 = Piece ID to render
+; ===========================================================================
+Render_TP:
+		movw	rr2,#TP_LayoutData	; load the address for the Tetrimino layout data into rr2
+		sll	r0			; ...
+		sll	r0			; ...
+		sll	r0			; ...multiply the Tetrimino ID by 8
+		add	r3,r0			; add this ID to the layout data address, getting the right address for the current ID
+		mov	r10,r0
+		mov	r1,#4			; set loop counter for 4 blocks
+
+TP_NextBlock:
+		mov	r0,(rr2)+		; get the current block's X displacement
+		mov	r8,r0
+		add	r8,currPieceX
+		mov	r0,(rr2)+		; get the current block's Y displacement
+		mov	r9,r0
+		add	r9,currPieceY
+		
+		mov	r11,#248		; Tetrimino tiles starting Y pos in bank
+		mov	r12,#8			; 8 wide tile
+		mov	r13,#8			; 8 tall tile
+		mov	r14,#39			; bank #
+		mov	r15,#0			; draw in composite mode
+		cmp	currPage,#1
+		br	eq,TP_DrawBlock
+		add	r15,#02h
+TP_DrawBlock:
+		call	FBDrawGraphic
+		dec	r1			; decrement the loop counter
+		br	nz,TP_NextBlock		; if there are still blocks to be drawn, branch
+
+		ret
+; ---------------------------------------------------------------------------
+; TETRIMINO LAYOUT DATA
+; Each Tetrimino gets 8 bytes, two each of its blocks
+; FORMAT: X-Pos Displacement, Y-Pos Displacement
+; Keep each displacement a multiple of 8 (saves processing time)
+TP_LayoutData:
+		defb	0, -16			; 0 - I
+		defb	0, -8
+		defb	0, 0
+		defb	0, 8
+		
+		defb	-8, 0			; 1 - T
+		defb	0, 0
+		defb	8, 0
+		defb	0, -8
+		
+		defb	0, -8			; 2 - L
+		defb	0, 0
+		defb	0, 8
+		defb	8, 8
+		
+		defb	0, -8			; 3 - J
+		defb	0, 0
+		defb	0, 8
+		defb	-8, 8
+		
+		defb	-8, 0			; 4 - O
+		defb	0, 0
+		defb	0, 8
+		defb	-8, 8
+		
+		defb	0, 0			; 5 - S
+		defb	8, 0
+		defb	-8, 8
+		defb	0, 8
+		
+		defb	-8, 0			; 6 - Z
+		defb	0, 0
+		defb	0, 8
+		defb	8, 8
+
+		defb	0, 0			; 7 - blank
+		defb	0, 0			; junk data
+		defb	0, 0
+		defb	0, 0
+; ===========================================================================
 		end
 ; ===========================================================================	

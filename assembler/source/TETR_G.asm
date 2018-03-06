@@ -39,28 +39,32 @@ Tetris_Update:
 		movw	tetrisPieces,#0		; completely clear out the stored tetris pieces
 
 		; generating the first four tetris pieces
-		call	RNGenerator
-		and	r0,#7
+		call	RNGenerator		; first tetrimino
+		and	r0,#3
 		mov	r1,r0
 		swap	r1
-		call	RNGenerator
+		call	RNGenerator		; second tetrimino
 		and	r0,#7
 		or	r1,r0
 		mov	tetrisPieces,r1
-		call	RNGenerator
+		call	RNGenerator		; third tetrimino
 		and	r0,#7
 		mov	r1,r0
 		swap	r1
-		call	RNGenerator
+		call	RNGenerator		; fourth tetrimino
 		and	r0,#7
 		or	r1,r0
 		mov	tetrisPieces+1,r1
+
+		mov	currPieceX,#50		; TEST X
+		mov	currPieceY,#10		; TEST Y
 
 ;----------------------------------------------------------------------------
 ; Game's main loop
 ;----------------------------------------------------------------------------
 Tetris_MainLoop:
 		call	WaitForVInt		
+;		call	ReadInput		; TESTING INPUT CODE
 
 		; clear the playing field with a white rectangle
 		movw	rr8,#2C00h
@@ -72,11 +76,13 @@ Tetris_MainLoop:
 Tetris_ClrBG:
 		call	FBFillColorRect
 		
-		
 		mov	r8,#50
 		mov	r9,#10		
 		movw	rr2,#Test_String
 		call	FBDrawString
+		
+		mov	r0,#1
+		call	Render_TP
 
 		; END OF MAIN LOOP
 		call	FBSwapPage		; swap the page to the newly rendered screen		

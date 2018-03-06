@@ -14,6 +14,7 @@ tetrisPieces	defs	2	; the 4 generated tetris pieces (01110222 03330444)
 pieceRNG	defs	1	; randomly generated number for tetris pieces
 currPieceX	defs	1	; current tetris piece X-coordinate
 currPieceY	defs	1	; current tetris piece Y-coordinate
+currPieceRot	defs	1	; current tetris piece rotation factor
 	
 ; Check to make sure that the space within zero page RAM hasn't been exceeded
 chk_FF:
