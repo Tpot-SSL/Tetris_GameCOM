@@ -157,16 +157,43 @@ RNGenerator:
 		pop	r0			; restore r0 from the stack
 		ret				; return
 ; ===========================================================================	
-; Subroutine to render a tetris piece
+; Subroutine to init a tetris piece layout
 ; Usage:
-; r0 = Piece ID to render
+; r0 = Piece ID to use
+; ===========================================================================
+GetTPLayout:
+		pushw	rr2			; copy rr2 onto the stack
+		movw	rr2,#TP_LayoutData	; load the address for the Tetrimino layout data into rr2
+		sll	r0
+		sll	r0
+		sll	r0			; ...multiply the Tetrimino ID by 8
+		
+		; prepare for proper word add
+		mov	r1,r0			; copy this to r1
+		mov	r0,#0			; clear r0
+		addw	rr2,rr0			; add the ID to the layout data address, getting the right layout for the current ID
+
+		movw	rr4,#currPieceLyt	; load the piece layout RAM into rr4
+		mov	r1,#8
+GetTPLayout_Copy:
+		mov	r0,(rr2)+
+		mov	(rr4)+,r0		
+		dec	r1			; decrement the loop counter
+		br	nz,GetTPLayout_Copy	; if there is data left, loop
+
+		popw	rr2			; restore rr2 from the stack
+		ret
+; ===========================================================================	
+; Subroutine to render a tetris piece
 ; ===========================================================================
 Render_TP:
-		movw	rr2,#TP_LayoutData	; load the address for the Tetrimino layout data into rr2
+		movw	rr2,#currPieceLyt	; load the address for the Tetrimino layout data into rr2
+		mov	r0,tetrisPieces
+		swap	r0
+		and	r0,#7
 		sll	r0			; ...
 		sll	r0			; ...
 		sll	r0			; ...multiply the Tetrimino ID by 8
-		add	r3,r0			; add this ID to the layout data address, getting the right address for the current ID
 		mov	r10,r0
 		mov	r1,#4			; set loop counter for 4 blocks
 

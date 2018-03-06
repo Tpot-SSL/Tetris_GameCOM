@@ -36,7 +36,8 @@ Tetris_DrawField:
 ; Main game update loop
 ;============================================================================		
 Tetris_Update:
-		movw	tetrisPieces,#0		; completely clear out the stored tetris pieces
+		mov	tetrisPieces,#0		; completely clear out the stored tetris pieces
+		mov	tetrisPieces+1,#0
 
 		; generating the first four tetris pieces
 		call	RNGenerator		; first tetrimino
@@ -55,6 +56,12 @@ Tetris_Update:
 		and	r0,#7
 		or	r1,r0
 		mov	tetrisPieces+1,r1
+		
+;		mov	r0,#1
+		mov	r0,tetrisPieces
+		swap	r0
+		and	r0,#7
+		call	GetTPLayout
 
 		mov	currPieceX,#50		; TEST X
 		mov	currPieceY,#10		; TEST Y
@@ -81,8 +88,7 @@ Tetris_ClrBG:
 		movw	rr2,#Test_String
 		call	FBDrawString
 		
-		mov	r0,#1
-		call	Render_TP
+		call	Render_TP		; render the Tetrimino
 
 		; END OF MAIN LOOP
 		call	FBSwapPage		; swap the page to the newly rendered screen		
