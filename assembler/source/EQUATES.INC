@@ -9,9 +9,11 @@ fadeStep	defs	1	; fading step
 gameState	defs	1	; gameState
 nextGState	defs	1	; next gameState
 currPage	defs	1	; current rendering page
+UIupdFlags	defs	1	; UI/rendering update flags
 
 tetrisPieces	defs	2	; the 4 generated tetris pieces (01110222 03330444)
 pieceRNG	defs	1	; randomly generated number for tetris pieces
+currPieceLyt	defs	8	; current tetris piece layout
 currPieceX	defs	1	; current tetris piece X-coordinate
 currPieceY	defs	1	; current tetris piece Y-coordinate
 currPieceRot	defs	1	; current tetris piece rotation factor
