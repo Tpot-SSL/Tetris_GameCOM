@@ -1,7 +1,7 @@
 
 # Assembler
 *.bat
-*.exe
+assembler\*.exe
 *.lnk
 *.err
 
