@@ -17,6 +17,9 @@ currPieceLyt	defs	8	; current tetris piece layout
 currPieceX	defs	1	; current tetris piece X-coordinate
 currPieceY	defs	1	; current tetris piece Y-coordinate
 currPieceRot	defs	1	; current tetris piece rotation factor
+		defs	1
+currPieceGrav	defs	2	; current piece gravity
+gravFactor	defs	2	; the gravity factor
 	
 ; Check to make sure that the space within zero page RAM hasn't been exceeded
 chk_FF:

@@ -63,8 +63,10 @@ Tetris_Update:
 		and	r0,#7
 		call	GetTPLayout
 
-		mov	currPieceX,#50		; TEST X
-		mov	currPieceY,#10		; TEST Y
+		movw	gravFactor,#4
+
+		mov	currPieceX,#59		; TEST X
+		mov	currPieceY,#64		; TEST Y
 
 ;----------------------------------------------------------------------------
 ; Game's main loop
@@ -72,10 +74,13 @@ Tetris_Update:
 Tetris_MainLoop:
 		call	WaitForVInt		
 ;		call	ReadInput		; TESTING INPUT CODE
+		call	Tetris_Logic
 
 		; clear the playing field with a white rectangle
-		movw	rr8,#2C00h
-		movw	rr10,#50A0h		; 80 wide, 160 tall
+		mov	r8,#43
+		mov	r9,#0
+		mov	r10,#80
+		mov	r11,#160
 		mov	r12,#0
 		cmp     currPage,#1
 		br      eq,Tetris_ClrBG
@@ -83,10 +88,10 @@ Tetris_MainLoop:
 Tetris_ClrBG:
 		call	FBFillColorRect
 		
-		mov	r8,#50
-		mov	r9,#10		
-		movw	rr2,#Test_String
-		call	FBDrawString
+;		mov	r8,#50
+;		mov	r9,#10		
+;		movw	rr2,#Test_String
+;		call	FBDrawString
 		
 		call	Render_TP		; render the Tetrimino
 
@@ -103,6 +108,77 @@ Test_String:
 Tetris_Draw:
 ;		call	FBFillColor
 		call 	Tetris_DrawField
+		ret
+;============================================================================
+; Handling Tetronimo logic
+;============================================================================
+Tetris_Logic:
+		call	Tetr_Shift
+
+
+		; automatically falling
+		movw	rr0,gravFactor
+		addw	currPieceGrav,rr0
+		cmp	currPieceGrav,#1
+		br	ult,TetLog_END
+		mov	r1,currPieceGrav
+		sll	r1
+		sll	r1
+		sll	r1
+;		add	currPieceY,r1		; UNCOMMENT TO REENABLE GRAVITY AFTER TESTING
+		mov	currPieceGrav,#0
+		
+TetLog_END:
+		ret
+;----------------------------------------------------------------------------		
+Tetr_Shift:
+		call	IOInputScan		; use the system call to read the current inputs
+		cmp	r0,#inputLeft		; is left pressed?
+		br	ne,TetrShft_ChkR	; if not, branch
+		sub	currPieceX,#8
+
+TetrShft_ChkR:
+		cmp	r0,#inputRight		; is right pressed?
+		br	ne,TetrShft_END		; if not, branch
+		add	currPieceX,#8
+		
+TetrShft_END:
+		call	Chk_ValidPos		; keep the positions in check
+		ret				; return
+;----------------------------------------------------------------------------			
+Chk_ValidPos:
+		movw	rr2,#currPieceLyt
+		mov	r2,#4
+
+Chk_LWall:
+		; ---- X CHECKS ----
+		mov	r0,0(rr2)		; get the current block's X displacement
+		add	r0,currPieceX		; add the Tetrimino's base X pos to the displacement
+	
+		cmp	r0,#51			; is the piece within the wall?
+		br	uge,Chk_RWall		; if not, branch
+		mov	currPieceX,#51
+		
+Chk_RWall:
+		cmp	r0,#115		; is the piece within the right wall?
+		br	ule,Chk_Floor		; if not, branch
+		mov	currPieceX,#115
+		
+		; NOTE TO SELF: ADD OTHER TETRIMINO COLLISION HERE
+		
+		; ---- Y CHECKS ----
+Chk_Floor:
+		mov	r0,1(rr2)		; get the current block's X displacement
+		add	r0,currPieceY		; add the Tetrimino's base X pos to the displacement
+		cmp	r0,#144
+		br	ule,Chk_NxtPce
+		mov	currPieceY,#144
+		; SET FLAG FOR PLACEMENT HERE
+		
+Chk_NxtPce:
+		addw	rr2,#2
+		dec	r2
+		br	nz,Chk_LWall
 		ret
 ;============================================================================
 		end

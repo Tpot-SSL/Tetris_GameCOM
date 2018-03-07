@@ -184,9 +184,34 @@ GetTPLayout_Copy:
 		popw	rr2			; restore rr2 from the stack
 		ret
 ; ===========================================================================	
+; Subroutine to rotate a tetris piece 90 degrees
+; ===========================================================================
+Rotate_TP:
+		; CLOCKWISE 90 FOR NOW
+		pushw	rr2
+		movw	rr2,#currPieceLyt	; load the address for the Tetrimino layout data into rr2
+		mov	r4,#4
+
+RotateTP_Rot:
+		mov	r0,(rr2)+		; get this block's X disp
+		mov	r1,0(rr2)		; get this block's Y disp
+		neg	r1
+		mov	0(rr2),r0
+		mov	-(rr2),r1
+;		neg	r0
+;		mov	0(rr2),r0
+;		mov	-(rr2),r1
+		addw	rr2,#2
+		dec	r4
+		br	nz,RotateTP_Rot
+
+		popw	rr2
+		ret
+; ===========================================================================	
 ; Subroutine to render a tetris piece
 ; ===========================================================================
 Render_TP:
+		pushw	rr2
 		movw	rr2,#currPieceLyt	; load the address for the Tetrimino layout data into rr2
 		mov	r0,tetrisPieces
 		swap	r0
@@ -218,6 +243,7 @@ TP_DrawBlock:
 		dec	r1			; decrement the loop counter
 		br	nz,TP_NextBlock		; if there are still blocks to be drawn, branch
 
+		popw	rr2		
 		ret
 ; ---------------------------------------------------------------------------
 ; TETRIMINO LAYOUT DATA
