@@ -290,6 +290,75 @@ TP_LayoutData:
 		defb	0, 0			; junk data
 		defb	0, 0
 		defb	0, 0
+; ===========================================================================	
+; Subroutine to render the playfield
+; ===========================================================================
+Render_Plyfld:
+		pushw	rr2
+		pushw	rr0
+
+		movw	rr2,#playfieldMap	; load the address for the playfield map into rr2
+		mov	r4,#5			; set X loop counter
+		mov	r5,#20			; set Y loop counter
+		mov	r8,#43			; set initial X drawing pos
+		mov	r9,#0			; set initial Y drawing pos
+
+RPF_NextBlocks:
+		mov	r0,(rr2)+		; get two blocks from the map
+		mov	r1,r0
+		swap	r0
+		and	r0,#7			; isolate the first block in r0
+		and	r1,#7			; isolate the second block in r1
+		sll	r0			; ...
+		sll	r0			; ...
+		sll	r0			; ...multiply the first block # by 8
+		sll	r1			; ...
+		sll	r1			; ...
+		sll	r1			; ...multiply the second block # by 8
+
+		mov	r10,r0
+		mov	r11,#248		; Tetrimino tiles starting Y pos in bank
+		mov	r12,#8			; 8 wide tile
+		mov	r13,#8			; 8 tall tile
+		mov	r14,#39			; bank #
+		mov	r15,#0			; draw in composite mode
+		cmp	currPage,#1
+		br	eq,RPF_DrawBlock1
+		add	r15,#02h
+RPF_DrawBlock1:
+		call	FBDrawGraphic
+		
+		mov	r10,r1
+		add	r8,#8
+		mov	r11,#248		; Tetrimino tiles starting Y pos in bank
+		mov	r12,#8			; 8 wide tile
+		mov	r13,#8			; 8 tall tile
+		mov	r14,#39			; bank #
+		mov	r15,#0			; draw in composite mode
+		cmp	currPage,#1
+		br	eq,RPF_DrawBlock2
+		add	r15,#02h
+RPF_DrawBlock2:
+		call	FBDrawGraphic
+
+		add	r8,#8			; go to the next two blocks in line
+		dec	r4			; decrement the X loop counter
+		br	nz,RPF_NextBlocks	; if there are still blocks to be drawn, branch
+		mov	r8,#43			; reset the X drawing pos
+		add	r9,#8			; go down a row
+		mov	r4,#5			; reset X loop counter
+		dec	r5			; decrement the Y loop counter
+		br	nz,RPF_NextBlocks	; if there are still blocks to be drawn, branch
+
+		popw	rr0
+		popw	rr2		
+		ret
+; ===========================================================================	
+; Subroutine to render the UI accordingly
+; ===========================================================================		
+Render_UI:
+
+		ret
 ; ===========================================================================
 		end
 ; ===========================================================================	

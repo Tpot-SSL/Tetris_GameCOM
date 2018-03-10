@@ -39,34 +39,47 @@ Tetris_Update:
 		mov	tetrisPieces,#0		; completely clear out the stored tetris pieces
 		mov	tetrisPieces+1,#0
 
+		; clear the playfield
+		movw	rr2,#playfieldMap
+		mov	r0,#100
+		mov	r1,#077h		; fill with blank blocks (ID 7)
+Tetris_ClrPlyfld:
+		mov	(rr2)+,r1
+		dec	r0
+		br	nz,Tetris_ClrPlyfld
+		
 		; generating the first four tetris pieces
 		call	RNGenerator		; first tetrimino
+		mov	r0,pieceRNG
 		and	r0,#3
 		mov	r1,r0
 		swap	r1
 		call	RNGenerator		; second tetrimino
+		mov	r0,pieceRNG
 		and	r0,#7
 		or	r1,r0
 		mov	tetrisPieces,r1
 		call	RNGenerator		; third tetrimino
+		mov	r0,pieceRNG
 		and	r0,#7
 		mov	r1,r0
 		swap	r1
 		call	RNGenerator		; fourth tetrimino
+		mov	r0,pieceRNG
 		and	r0,#7
 		or	r1,r0
 		mov	tetrisPieces+1,r1
 		
-;		mov	r0,#1
 		mov	r0,tetrisPieces
 		swap	r0
 		and	r0,#7
-		call	GetTPLayout
+		call	GetTPLayout		; get the layout for the first Tetrimino
 
-		movw	gravFactor,#4
+		movw	gravFactor,#20
+		mov	currPiecePlce,#0	; clear the Tetrimino placement flag
 
-		mov	currPieceX,#59		; TEST X
-		mov	currPieceY,#64		; TEST Y
+		mov	currPieceX,#75		; TEST X
+		mov	currPieceY,#40		; TEST Y
 
 ;----------------------------------------------------------------------------
 ; Game's main loop
@@ -86,22 +99,14 @@ Tetris_MainLoop:
 		br      eq,Tetris_ClrBG
 		bset    r12,#4
 Tetris_ClrBG:
-		call	FBFillColorRect
-		
-;		mov	r8,#50
-;		mov	r9,#10		
-;		movw	rr2,#Test_String
-;		call	FBDrawString
-		
-		call	Render_TP		; render the Tetrimino
+		call	FBFillColorRect		; clear the playfield section out with white
+		call	Render_UI
+		call	Render_Plyfld		; draw the already placed blocks
+		call	Render_TP		; render the current Tetrimino
 
 		; END OF MAIN LOOP
 		call	FBSwapPage		; swap the page to the newly rendered screen		
 		jmp	Tetris_MainLoop		; loop
-
-Test_String:	
-		defm	'HELLO FROM STONE'
-		db	0FFh		; end of string		
 ;============================================================================
 ; Screen fade drawing routine
 ;============================================================================
@@ -113,72 +118,407 @@ Tetris_Draw:
 ; Handling Tetronimo logic
 ;============================================================================
 Tetris_Logic:
-		call	Tetr_Shift
-
-
-		; automatically falling
-		movw	rr0,gravFactor
-		addw	currPieceGrav,rr0
-		cmp	currPieceGrav,#1
-		br	ult,TetLog_END
-		mov	r1,currPieceGrav
-		sll	r1
-		sll	r1
-		sll	r1
-;		add	currPieceY,r1		; UNCOMMENT TO REENABLE GRAVITY AFTER TESTING
-		mov	currPieceGrav,#0
+		call	Tetr_ClrdLines		; check for cleared lines
+		call	Tetr_Grav		; automatically pull the Tetrimino down
+		call	Tetr_Shift		; let the player shift the Tetrimino
+		call	Tetr_PlacePiece		; check if the Tetrimino should be placed
 		
 TetLog_END:
-		ret
+		ret				; return
+;----------------------------------------------------------------------------		
+Tetr_ClrdLines:
+		pushw	rr2
+		pushw	rr4
+		movw	rr2,#playfieldMap	; load the playfield map into rr2
+		movw	rr4,#clrLineMap
+		mov	r7,#20			; 20 rows
+		
+TetrClrLn_NxtRow:
+		mov	r6,#5			; 10 wide
+		
+TetrClrLn_NxtSlot:
+		mov	r0,(rr2)+		; copy two blocks to r0
+		mov	r1,r0			; copy r0 to r1
+		and	r0,#070h		; isolate the first block
+		and	r1,#007h		; isolate the second block
+		swap	r0
+		cmp	r0,#7			; is the first block in the current spot blank?
+		br	eq,TetrClrLn_ChkNxt	; if so, branch
+		cmp	r1,#7			; is the second block in the current spot blank?
+		br	eq,TetrClrLn_ChkNxt	; if so, branch
+		dec	r6			; decrease the loop counter
+		br	nz,TetrClrLn_NxtSlot	; if there are still blocks to be checked, branch
+;		mov	0(rr4),#1		; set flag to indicate this line on the playfield should be cleared
+
+TetrClrLn_ChkNxt:
+		addw	rr4,#1			; go to the next playfield row flag
+		dec	r7
+		br	nz,TetrClrLn_NxtRow
+		
+TetrClrLn_END:		
+		popw	rr4
+		popw	rr2
+		ret				; return
 ;----------------------------------------------------------------------------		
 Tetr_Shift:
 		call	IOInputScan		; use the system call to read the current inputs
+
 		cmp	r0,#inputLeft		; is left pressed?
 		br	ne,TetrShft_ChkR	; if not, branch
-		sub	currPieceX,#8
+		call	Tetr_ChkLBump
 
 TetrShft_ChkR:
 		cmp	r0,#inputRight		; is right pressed?
-		br	ne,TetrShft_END		; if not, branch
-		add	currPieceX,#8
+		br	ne,TetrShft_ChkA		; if not, branch
+		call	Tetr_ChkRBump
 		
+TetrShft_ChkA:
+		cmp	r0,#inputA		; is left pressed?
+		br	ne,TetrShft_END	; if not, branch
+		call	Rotate_TP
+
 TetrShft_END:
-		call	Chk_ValidPos		; keep the positions in check
+		call	Tetr_ChkBound		; keep the positions in check
 		ret				; return
-;----------------------------------------------------------------------------			
-Chk_ValidPos:
+;----------------------------------------------------------------------------
+Tetr_ChkLBump:
+		cmp	currPieceX,#43		; is the block up against a wall?
+		br	ule,TetrChkBmpL_END	; if so, don't bother doing the check
+
+		push	r0
+		pushw	rr2
+		pushw	rr4
+		
+		mov	r6,#4
+		movw	rr2,#currPieceLyt	; load the current Tetrimino layout into rr2		
+		
+TetrChkBmpL_Blk:
+		movw	rr4,#playfieldMap	; load the playfield map into rr4
+
+		mov	r0,1(rr2)		; get the current block's Y displacement		
+		add	r0,currPieceY		; add the Y position
+		srl	r0
+		srl	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		mult	rr0,#5
+		addw	rr4,rr0			; add the Y displacement to the playfield map address
+		
+		mov	r0,0(rr2)		; get the current blocks' X displacement
+		add	r0,currPieceX		; add the X position
+		sub	r0,#43			; subtract the wall offset, getting the raw position
+		srl	r0
+		srl	r0
+		srl	r0
+		push	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		addw	rr4,rr0
+		pop	r0
+		
+		and	r0,#1
+		cmp	r0,#0			; is the block pos even or odd?
+		br	eq,TetrChkBmpL_Read	; if even, branch
+		mov	r1,0(rr4)
+		and	r1,#070h
+		swap	r1
+		br	TetrChkBmpL_Cmp
+		
+TetrChkBmpL_Read:
+		mov	r1,-1(rr4)
+		and	r1,#07h
+
+TetrChkBmpL_Cmp:
+		cmp	r1,#7			; is the block to the left blank?
+		br	ne,TetrChkBmpL_REND	; if not, branch
+
+		addw	rr2,#2
+		dec	r6
+		br	nz,TetrChkBmpL_Blk	; if there are still blocks left to be handled, branch
+		sub	currPieceX,#8		; otherwise, all has checked out, and the block can move right
+
+TetrChkBmpL_REND:
+		popw	rr4
+		popw	rr2
+		pop	r0
+
+TetrChkBmpL_END:
+		ret
+;----------------------------------------------------------------------------
+Tetr_ChkRBump:
+		cmp	currPieceX,#115		; is the block up against a wall?
+		br	uge,TetrChkBmpR_END	; if so, don't bother doing the check
+
+		push	r0
+		pushw	rr2
+		pushw	rr4
+		
+		mov	r6,#4
+		movw	rr2,#currPieceLyt	; load the current Tetrimino layout into rr2
+
+TetrChkBmpR_Blk:		
+		movw	rr4,#playfieldMap	; load the playfield map into rr4
+
+		mov	r0,1(rr2)		; get the current block's Y displacement		
+		add	r0,currPieceY		; add the Y position
+		srl	r0
+		srl	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		mult	rr0,#5
+		addw	rr4,rr0			; add the Y displacement to the playfield map address
+		
+		mov	r0,0(rr2)		; get the current blocks' X displacement
+		add	r0,currPieceX		; add the X position
+		sub	r0,#43			; subtract the wall offset, getting the raw position
+		srl	r0
+		srl	r0
+		srl	r0
+		push	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		addw	rr4,rr0
+		pop	r0
+		
+		and	r0,#1
+		cmp	r0,#0			; is the block pos even or odd?
+		br	eq,TetrChkBmpR_Read	; if even, branch
+		mov	r1,1(rr4)
+		and	r1,#070h
+		swap	r1
+		br	TetrChkBmpR_Cmp
+		
+TetrChkBmpR_Read:
+		mov	r1,0(rr4)
+		and	r1,#07h
+
+TetrChkBmpR_Cmp:
+		cmp	r1,#7			; is the block to the right blank?
+		br	ne,TetrChkBmpR_REND	; if not, branch
+
+		addw	rr2,#2
+		dec	r6
+		br	nz,TetrChkBmpR_Blk	; if there are still blocks left to be handled, branch
+		add	currPieceX,#8		; otherwise, all has checked out, and the block can move right
+
+TetrChkBmpR_REND:
+		popw	rr4
+		popw	rr2
+		pop	r0
+		
+TetrChkBmpR_END:
+		ret
+;----------------------------------------------------------------------------
+Tetr_ChkBound:
 		movw	rr2,#currPieceLyt
-		mov	r2,#4
+		mov	r4,#4
 
 Chk_LWall:
 		; ---- X CHECKS ----
 		mov	r0,0(rr2)		; get the current block's X displacement
 		add	r0,currPieceX		; add the Tetrimino's base X pos to the displacement
-	
-		cmp	r0,#51			; is the piece within the wall?
+		mov	r1,r0	
+
+		cmp	r0,#43			; is the piece within the wall?
 		br	uge,Chk_RWall		; if not, branch
-		mov	currPieceX,#51
+		sub	r1,#43
+		sub	currPieceX,r1
 		
 Chk_RWall:
 		cmp	r0,#115		; is the piece within the right wall?
 		br	ule,Chk_Floor		; if not, branch
-		mov	currPieceX,#115
+		sub	r1,#115
+		sub	currPieceX,r1
 		
-		; NOTE TO SELF: ADD OTHER TETRIMINO COLLISION HERE
-		
-		; ---- Y CHECKS ----
 Chk_Floor:
+		; ---- Y CHECKS ----
 		mov	r0,1(rr2)		; get the current block's X displacement
 		add	r0,currPieceY		; add the Tetrimino's base X pos to the displacement
-		cmp	r0,#144
-		br	ule,Chk_NxtPce
-		mov	currPieceY,#144
-		; SET FLAG FOR PLACEMENT HERE
+		mov	r1,r0
+		cmp	r0,#152
+		br	ult,Chk_NxtPce
+		sub	r1,#152
+		sub	currPieceY,r1
+		mov	currPiecePlce,#1	; set the placement flag
 		
 Chk_NxtPce:
 		addw	rr2,#2
-		dec	r2
+		dec	r4
 		br	nz,Chk_LWall
+		ret
+;----------------------------------------------------------------------------
+Tetr_Grav:
+		cmp	currPieceY,#152		; is the block on the floor?
+		br	uge,TetrGrav_END	; if so, don't bother trying to handle gravity
+
+		; check beneath the block to see if falling is even possible
+		mov	r6,#4
+		movw	rr2,#currPieceLyt
+
+TetrGrav_Blk:
+		movw	rr4,#playfieldMap	; load the playfield map into rr4
+
+		mov	r0,1(rr2)		; get the current block's Y displacement		
+		add	r0,currPieceY		; add the Y position
+		srl	r0
+		srl	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		mult	rr0,#5
+		addw	rr4,rr0			; add the Y displacement to the playfield map address
+		
+		mov	r0,0(rr2)		; get the current blocks' X displacement
+		add	r0,currPieceX		; add the X position
+		sub	r0,#43			; subtract the wall offset, getting the raw position
+		srl	r0
+		srl	r0
+		srl	r0
+		push	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		addw	rr4,rr0
+		pop	r0	
+		mov	r1,5(rr4)		
+		and	r0,#1
+		cmp	r0,#0			; is the block pos even or odd?
+		br	eq,TetrGrav_Read	; if even, branch
+		and	r1,#7
+		br	TetrGrav_Cmp
+		
+TetrGrav_Read:
+		swap	r1
+		and	r1,#7
+		
+TetrGrav_Cmp:
+		cmp	r1,#7			; is the block underneath blank?
+		br	ne,TetrGrav_Place	; if not, branch
+		addw	rr2,#2
+		dec	r6
+		br	nz,TetrGrav_Blk
+		
+		; automatically falling
+		movw	rr0,gravFactor
+		addw	currPieceGrav,rr0
+		cmp	currPieceGrav,#1
+		br	ult,TetrGrav_END
+		mov	r1,currPieceGrav
+		sll	r1
+		sll	r1
+		sll	r1
+		add	currPieceY,r1		; UNCOMMENT TO REENABLE GRAVITY AFTER TESTING
+		mov	currPieceGrav,#0
+
+TetrGrav_END:
+		ret
+		
+TetrGrav_Place:
+		mov	currPiecePlce,#1	; set the placement flag
+		ret
+;----------------------------------------------------------------------------
+Tetr_PlacePiece:
+		cmp	currPiecePlce,#0	; should the current Tetrimino be placed?
+		jmp	eq,TetrPlcPc_END	; if not, branch
+		mov	currPiecePlce,#0	; clear the placement flag
+
+		pushw	rr2
+		pushw	rr4
+		
+		mov	r6,#4
+		movw	rr2,#currPieceLyt	; load the current Tetrimino layout into rr2
+
+TetrPlcPc_Blk:		
+		movw	rr4,#playfieldMap	; load the playfield map into rr4
+
+		mov	r0,1(rr2)		; get the current block's Y displacement		
+		add	r0,currPieceY		; add the Y position
+		srl	r0
+		srl	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		mult	rr0,#5
+		addw	rr4,rr0			; add the Y displacement to the playfield map address
+		
+		mov	r0,0(rr2)		; get the current blocks' X displacement
+		add	r0,currPieceX		; add the X position
+		sub	r0,#43			; subtract the wall offset, getting the raw position
+		srl	r0
+		srl	r0
+		srl	r0
+		push	r0
+		srl	r0
+		mov	r1,r0
+		mov	r0,#0
+		addw	rr4,rr0
+		pop	r0
+		
+		mov	r7,tetrisPieces
+		swap	r7
+		and	r7,#7				
+
+		mov	r1,0(rr4)
+		
+		and	r0,#1
+		cmp	r0,#0			; is the block pos even or odd?
+		br	eq,TetrPlcPc_Read	; if even, branch
+
+		and	r1,#070h
+		or	r1,r7
+
+		br	TetrPlcPc_Nxt
+		
+TetrPlcPc_Read:
+		and	r1,#07h
+		swap	r7
+		or	r1,r7
+
+TetrPlcPc_Nxt:
+		mov	0(rr4),r1
+		addw	rr2,#2
+		dec	r6
+		br	nz,TetrPlcPc_Blk	; if there are still blocks left to be handled, branch
+
+		mov	currPieceX,#75		; TEST X
+		mov	currPieceY,#40		; TEST Y	
+
+		mov	r0,tetrisPieces
+		mov	r1,tetrisPieces+1
+		swap	r0
+		swap	r1
+		and	r0,#070h
+		and	r1,#7
+		or	r0,r1
+		mov	tetrisPieces,r0
+		mov	r1,tetrisPieces+1
+		swap	r1
+		and	r1,#070h
+		call	RNGenerator		; fourth tetrimino
+		mov	r0,pieceRNG
+		and	r0,#7
+		cmp	r0,#7
+		br	ne,TetrPlcPc_ntBlnk
+		dec	r0
+		
+TetrPlcPc_ntBlnk:
+		or	r1,r0
+		mov	tetrisPieces+1,r1
+		
+		mov	r0,tetrisPieces
+		swap	r0
+		and	r0,#7
+		call	GetTPLayout
+		
+TetrPlcPc_REND:
+		popw	rr4
+		popw	rr2
+
+TetrPlcPc_END:		
 		ret
 ;============================================================================
 		end

@@ -16,15 +16,26 @@ pieceRNG	defs	1	; randomly generated number for tetris pieces
 currPieceLyt	defs	8	; current tetris piece layout
 currPieceX	defs	1	; current tetris piece X-coordinate
 currPieceY	defs	1	; current tetris piece Y-coordinate
-currPieceRot	defs	1	; current tetris piece rotation factor
-		defs	1
 currPieceGrav	defs	2	; current piece gravity
 gravFactor	defs	2	; the gravity factor
+currPiecePlce	defs	1	; current tetris piece placement flag/timer
 	
 ; Check to make sure that the space within zero page RAM hasn't been exceeded
 chk_FF:
             if      chk_FF .gt. 0FFh
             error 	Too much data in zero page ram
+            endif
+;============================================================================
+; Non-zero Page Ram (0x208-0x37F)
+;----------------------------------------------------------------------------
+		org	0208h
+playfieldMap	defs	100	; the game field's placement map
+clrLineMap	defs	20	; mapout of the cleared lines to handle, when needed
+	
+; Check to make sure that the space within zero page RAM hasn't been exceeded
+chk_37F:
+            if      chk_37F .gt. 037Fh
+            error 	Too much data in non-zero page ram
             endif
 ;============================================================================  
 ; User Input Equates
