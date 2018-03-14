@@ -75,6 +75,8 @@ Tetris_ClrPlyfld:
 		and	r0,#7
 		call	GetTPLayout		; get the layout for the first Tetrimino
 
+		mov	gameType,#0		; for now, set the game to Type A (type B to be handled later)
+		
 		movw	gravFactor,#20
 		mov	currPiecePlce,#0	; clear the Tetrimino placement flag
 
@@ -86,9 +88,9 @@ Tetris_ClrPlyfld:
 ;----------------------------------------------------------------------------
 Tetris_MainLoop:
 		call	WaitForVInt		
-;		call	ReadInput		; TESTING INPUT CODE
+		call	ReadInput		; TESTING INPUT CODE
 		call	Tetris_Logic
-
+		call	Render_UI
 		; clear the playing field with a white rectangle
 		mov	r8,#43
 		mov	r9,#0
@@ -100,7 +102,6 @@ Tetris_MainLoop:
 		bset    r12,#4
 Tetris_ClrBG:
 		call	FBFillColorRect		; clear the playfield section out with white
-		call	Render_UI
 		call	Render_Plyfld		; draw the already placed blocks
 		call	Render_TP		; render the current Tetrimino
 
@@ -129,53 +130,102 @@ TetLog_END:
 Tetr_ClrdLines:
 		pushw	rr2
 		pushw	rr4
+		pushw	rr6
+
 		movw	rr2,#playfieldMap	; load the playfield map into rr2
+		movw	rr10,rr2
 		movw	rr4,#clrLineMap
 		mov	r7,#20			; 20 rows
 		
-TetrClrLn_NxtRow:
+TetrChkClr_NxtRow:
 		mov	r6,#5			; 10 wide
 		
-TetrClrLn_NxtSlot:
+TetrChkClr_NxtSlot:
 		mov	r0,(rr2)+		; copy two blocks to r0
 		mov	r1,r0			; copy r0 to r1
 		and	r0,#070h		; isolate the first block
 		and	r1,#007h		; isolate the second block
 		swap	r0
 		cmp	r0,#7			; is the first block in the current spot blank?
-		br	eq,TetrClrLn_ChkNxt	; if so, branch
+		br	eq,TetrChkClr_ChkNxt	; if so, branch
 		cmp	r1,#7			; is the second block in the current spot blank?
-		br	eq,TetrClrLn_ChkNxt	; if so, branch
+		br	eq,TetrChkClr_ChkNxt	; if so, branch
 		dec	r6			; decrease the loop counter
-		br	nz,TetrClrLn_NxtSlot	; if there are still blocks to be checked, branch
-;		mov	0(rr4),#1		; set flag to indicate this line on the playfield should be cleared
+		br	nz,TetrChkClr_NxtSlot	; if there are still blocks to be checked, branch
+		mov	r0,#1
+		mov	0(rr4),r0		; set flag to indicate this line on the playfield should be cleared
+		inc	r8			; increment the relative cleared line counter
 
-TetrClrLn_ChkNxt:
+TetrChkClr_ChkNxt:
 		addw	rr4,#1			; go to the next playfield row flag
+		addw	rr10,#5
+		movw	rr2,rr10
 		dec	r7
-		br	nz,TetrClrLn_NxtRow
+		br	nz,TetrChkClr_NxtRow
+		cmp	r8,#0			; were any lines cleared?
+		br	eq,TetrClrLn_END	; if not, branch and exit
+		add	linesClr,r8	
+		
+		; REMOVE THE CLEARED LINES
+		movw	rr2,#playfieldMap	; load the beginning of the playfield map into rr2
+		movw	rr4,#clrLineMap		; load the cleared line map into rr4
+		mov	r6,#20			; 20 rows
+
+TetrClrLn_ChkClrRow:		
+		mov	r0,(rr4)+
+		cmp	r0,#0			; is this row to be cleared?
+		br	eq,TetrClrLn_GoNxt	; if not, branch
+		mov	r7,#5
+		mov	r0,#077h
+TetrClrLn_ClrRow:		
+		mov	(rr2)+,r0		; clear two blocks
+		dec	r7
+		br	ne,TetrClrLn_ClrRow	; loop until the entire current row is cleared
+TetrClrLn_GoNxt:
+		addw	rr2,#5			; go to the next row in the playfield map
+		dec	r6			; decrement the row loop counter
+		br	nz,TetrClrLn_ChkClrRow	; loop until each row has been checked for clearing
+		
+		; RESET THE CLEARED LINE MAP
+		mov	r0,#0
+		mov	r1,#20
+		movw	rr4,#clrLineMap
+TetrClLnMp_Clr:
+		mov	(rr4)+,r0
+		dec	r1
+		br	nz,TetrClLnMp_Clr
+		
+		; SHIFT THE MAP DOWNWARDS ACCORDINGLY
+		movw	rr2,#playfieldMap
+		addw	rr2,#95			; start on the last line of the playfield map
+		movw	rr10,rr2
 		
 TetrClrLn_END:		
+		popw	rr6
 		popw	rr4
 		popw	rr2
 		ret				; return
 ;----------------------------------------------------------------------------		
 Tetr_Shift:
-		call	IOInputScan		; use the system call to read the current inputs
-
-		cmp	r0,#inputLeft		; is left pressed?
-		br	ne,TetrShft_ChkR	; if not, branch
+		btst	playerPress+1,#inputLeft	; is left pressed?
+		br	z,TetrShft_ChkR			; if not, branch
 		call	Tetr_ChkLBump
 
 TetrShft_ChkR:
-		cmp	r0,#inputRight		; is right pressed?
-		br	ne,TetrShft_ChkA		; if not, branch
+		btst	playerPress+1,#inputRight	; is right pressed?
+		br	z,TetrShft_ChkA			; if not, branch
 		call	Tetr_ChkRBump
 		
 TetrShft_ChkA:
-		cmp	r0,#inputA		; is left pressed?
-		br	ne,TetrShft_END	; if not, branch
+		btst	playerPress+1,#inputA		; is A pressed?
+		br	z,TetrShft_ChkDwn		; if not, branch
 		call	Rotate_TP
+		
+TetrShft_ChkDwn:
+		movw	gravFactor,#20
+		btst	playerHeld+1,#inputDown		; is down pressed?
+		br	z,TetrShft_END			; if not, branch
+		movw	gravFactor,#200
 
 TetrShft_END:
 		call	Tetr_ChkBound		; keep the positions in check
@@ -486,6 +536,8 @@ TetrPlcPc_Nxt:
 
 		mov	currPieceX,#75		; TEST X
 		mov	currPieceY,#40		; TEST Y	
+		
+		movw	gravFactor,#20
 
 		mov	r0,tetrisPieces
 		mov	r1,tetrisPieces+1
@@ -513,6 +565,9 @@ TetrPlcPc_ntBlnk:
 		swap	r0
 		and	r0,#7
 		call	GetTPLayout
+		
+		mov	scoreAdd+2,#10h
+		call	Update_Score
 		
 TetrPlcPc_REND:
 		popw	rr4

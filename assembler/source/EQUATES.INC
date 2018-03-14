@@ -4,7 +4,13 @@
 ;----------------------------------------------------------------------------
 		org	0BEh
 prevVtick	defs	1	; the previous V-Int tick
-playerInput	defs	1	; the player's input for the frame
+
+		; 0000 XXXX XXXX XXXX
+		;      DoCB AmpM RLDU
+playerPress	defs	2	; the player's pressed buttons for the frame
+playerHeld	defs	2	; the player's held buttons for the frame
+
+		defs	1
 fadeStep	defs	1	; fading step
 gameState	defs	1	; gameState
 nextGState	defs	1	; next gameState
@@ -19,6 +25,12 @@ currPieceY	defs	1	; current tetris piece Y-coordinate
 currPieceGrav	defs	2	; current piece gravity
 gravFactor	defs	2	; the gravity factor
 currPiecePlce	defs	1	; current tetris piece placement flag/timer
+
+gameType	defs	1	; the game's mode
+gameLevel	defs	1	; the current game's level
+linesClr	defs	2	; the kept count of lines cleared in the game
+gameScore	defs	3	; the game's score (capped at 999,999)
+scoreAdd	defs	3	; amount to add to the game's score
 	
 ; Check to make sure that the space within zero page RAM hasn't been exceeded
 chk_FF:
@@ -44,17 +56,17 @@ chk_37F:
 ; Value = Row*13+Column+1
 ; EXAMPLE: Top Left = 0x01, Bottom Right = 0x82
 
-inputUp		equ	083h	; joypad up
-inputDown	equ	084h	; joypad down
-inputLeft	equ	085h	; joypad left
-inputRight	equ	086h	; joypad right
+inputUp		equ	001h	; joypad up
+inputDown	equ	002h	; joypad down
+inputLeft	equ	004h	; joypad left
+inputRight	equ	008h	; joypad right
 
-inputMenu	equ	087h	; Menu button
-inputSound	equ	089h	; Sound button
-inputPause	equ	08ah	; Pause button
+inputMenu	equ	010h	; Menu button
+inputSound	equ	040h	; Sound button
+inputPause	equ	020h	; Pause button
 
-inputA		equ	08bh	; A button
-inputB		equ	08ch	; B button
-inputC		equ	08dh	; C button
-inputD		equ	08eh	; D button
+inputA		equ	080h	; A button
+inputB		equ	001h	; B button
+inputC		equ	002h	; C button
+inputD		equ	008h	; D button
 ;============================================================================

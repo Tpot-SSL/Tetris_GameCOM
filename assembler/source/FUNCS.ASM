@@ -28,12 +28,71 @@ onesecond:
 ; Subroutine to read the player's input
 ; ===========================================================================	
 ReadInput:
-		call	IOInputScan		; use the system call to read the current inputs
-		mov	playerInput,r0		; store the input to RAM
-		call	IOInputScan
-		mov	r1,playerInput
-		cmp	r0,r1
-		br	eq,ReadInput
+		; $D
+		; P0
+		;7F = 0111 1111 = A
+		;BF = 1011 1111 = mute
+		;DF = 1101 1111 = pause
+		;EF = 1110 1111 = menu
+		;F7 = 1111 0111 = right
+		;FB = 1111 1011 = left
+		;FD = 1111 1101 = down
+		;FE = 1111 1110 = up
+		; P1
+		;FD = 1111 1101 = C
+		;FE = 1111 1110 = B
+		mov	015h,#0FFh
+		mov	016h,#07Fh
+		mov	r3,#10
+waitLoop:
+		nop
+		nop
+		nop
+		dbnz	r3,waitLoop
+		mov	r0,014h			; read P0 into r0
+		mov	r1,015h			; read P1 into r1
+		or	r1,#0FCh		; filter the relevant bits for P1
+		
+		; $E
+		; P0
+		;FD = 1111 1101 = D
+		;FE = 1111 1110 = on/off
+		mov	015h,#0FFh
+		mov	016h,#0FFh
+		mov	r3,#10
+waitLoop2:
+		nop
+		nop
+		nop
+		dbnz	r3,waitLoop2
+		mov	r2,014h			; read P0 into r0
+		or	r2,#0FCh
+
+		neg	r0
+		neg	r1
+		neg	r2
+		sll	r2
+		sll	r2
+		or	r2,r1
+		
+		mov	r3,playerHeld
+		mov	r4,playerHeld+1
+		
+		mov	playerHeld,r2
+		mov	playerHeld+1,r0
+		
+		xor	r2,r3
+		xor	r0,r4
+		
+		and	r2,playerHeld
+		and	r0,playerHeld+1
+		
+		mov	playerPress,r2
+		mov	playerPress+1,r0		
+		
+		; 0000 XXXX XXXX XXXX
+		;      DoCB AmpM RLDU
+		
 		ret
 ; ===========================================================================
 ; Subroutine to wait for a vertical interrupt
@@ -357,7 +416,188 @@ RPF_DrawBlock2:
 ; Subroutine to render the UI accordingly
 ; ===========================================================================		
 Render_UI:
+;		cmp	UIupdFlags,#0		; does the UI need to be updated at all?
+;		br	eq,Render_UI_END	; if not, branch
+;		mov	UIupdFlags,#0
+		
+		mov	r8,#123
+		mov	r9,#0
+		mov	r10,#0
+		mov	r11,#0
+		mov	r12,#77			    ; Horizontal size
+		mov	r13,#160		    ; Vertical size
+		mov	r14,#36			; Bank #
+		mov	r15,#0			    ; Write mode
+		cmp	currPage,#1
+		br	eq,RndrUI_Field1
+		add	r15,#02h
+RndrUI_Field1:		
+		call	FBDrawGraphic			; Render the background to Page A
+		
+		mov	r8,#0
+		mov	r9,#0
+		mov	r10,#200
+		mov	r11,#0
+		mov	r12,#43				; Horizontal size
+		mov	r13,#160			; Vertical size
+		mov	r14,#39				; Bank #
+		mov	r15,#0				; Write mode
+		cmp	currPage,#1
+		br	eq,RndrUI_Field2
+		add	r15,#02h
+RndrUI_Field2:		
+		call	FBDrawGraphic			; Render the background to Page A
 
+		; render the current game-type
+		mov	r8,#178
+		mov	r9,#129
+		mov	r10,gameType			; copy the current game-type to r0
+		add	r10,#0Ah
+		call	FBDrawChar
+		
+RndrUI_LinesClr:
+		; render the total of lines cleared
+		mov	r8,#6
+		mov	r9,#120
+		mov	r10,linesClr
+		swap	r10
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,linesClr
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,linesClr+1
+		swap	r10
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,linesClr+1
+		and	r10,#0FH
+		call	FBDrawChar		
+		
+RndrUI_Score:
+		; render the score
+		mov	r8,#150
+		mov	r9,#145
+		mov	r10,gameScore
+		swap	r10
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,gameScore
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,gameScore+1
+		swap	r10
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,gameScore+1
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,gameScore+2
+		swap	r10
+		and	r10,#0FH
+		call	FBDrawChar
+		add	r8,#6
+		mov	r10,gameScore+2
+		and	r10,#0FH
+		call	FBDrawChar
+
+Render_UI_END:
+		ret
+; ===========================================================================	
+; Subroutine to handle adding to the game's score
+; ===========================================================================
+Update_Score:
+		mov	r0,gameScore+2
+		mov	r1,scoreAdd+2
+		and	r0,#00Fh		
+		and	r1,#00Fh		
+		add	r0,r1
+		cmp	r0,#00Ah		; has the current digit surpassed 10?
+		br	ult,UpdScr_Dgt2		; if not, branch
+		sub	r0,#00Ah
+		add	gameScore+2,#010h
+
+UpdScr_Dgt2:
+		mov	r4,#0
+		or	r4,r0
+		mov	r0,gameScore+2
+		mov	r1,scoreAdd+2
+		and	r0,#0F0h		
+		and	r1,#0F0h		
+		add	r0,r1
+		cmp	r0,#0A0h		; has the current digit surpassed 10?
+		br	ult,UpdScr_Dgt3		; if not, branch
+		sub	r0,#0A0h
+		add	gameScore+1,#001h
+
+UpdScr_Dgt3:		
+		or	r4,r0
+		mov	gameScore+2,r4
+		
+		mov	r0,gameScore+1
+		mov	r1,scoreAdd+1
+		and	r0,#00Fh		
+		and	r1,#00Fh		
+		add	r0,r1
+		cmp	r0,#00Ah		; has the current digit surpassed 10?
+		br	ult,UpdScr_Dgt4		; if not, branch
+		sub	r0,#00Ah
+		add	gameScore+1,#010h
+
+UpdScr_Dgt4:		
+		mov	r4,#0
+		or	r4,r0
+		mov	r0,gameScore+1
+		mov	r1,scoreAdd+1
+		and	r0,#0F0h		
+		and	r1,#0F0h		
+		add	r0,r1
+		cmp	r0,#0A0h		; has the current digit surpassed 10?
+		br	ult,UpdScr_Dgt5		; if not, branch
+		sub	r0,#0A0h
+		add	gameScore,#001h
+
+UpdScr_Dgt5:		
+		or	r4,r0
+		mov	gameScore+1,r4
+		
+		mov	r0,gameScore
+		mov	r1,scoreAdd
+		and	r0,#00Fh		
+		and	r1,#00Fh		
+		add	r0,r1
+		cmp	r0,#00Ah		; has the current digit surpassed 10?
+		br	ult,UpdScr_Dgt6		; if not, branch
+		sub	r0,#00Ah
+		add	gameScore,#010h
+
+UpdScr_Dgt6:		
+		mov	r4,#0
+		or	r4,r0
+		mov	r0,gameScore
+		mov	r1,scoreAdd
+		and	r0,#0F0h		
+		and	r1,#0F0h		
+		add	r0,r1
+		cmp	r0,#0A0h		; has the current digit surpassed 10?
+		br	ult,UpdScr_END		; if not, branch
+
+		; cap the score at 999,999
+		mov	gameScore,#099h
+		mov	gameScore+1,#099h
+		mov	gameScore+2,#099h
+		ret
+
+UpdScr_END:		
+		or	r4,r0
+		mov	gameScore,r4	
 		ret
 ; ===========================================================================
 		end
